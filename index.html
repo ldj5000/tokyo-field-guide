@@ -357,6 +357,10 @@ const markers = new Map();
 const FB_LAYERS = ["fb-wards","fb-rail","fb-rivers"];
 const mapNote = t => { const n = $("#mapnote"); n.textContent = t || ""; n.hidden = !t; };
 
+function routesGeo(){                  // only the routes whose layer is switched on
+  return {type:"FeatureCollection", features:(DATA.overlay.lines || []).filter(l => st.on.includes(l.c)).map(l => ({type:"Feature",
+    properties:{id:l.id, c:l.c, label:l.n + "  " + (l.j || "")}, geometry:{type:"LineString", coordinates:l.coords}}))};
+}
 function planGeo(){
   const c = plan.map(id => { const a = pos(P[id]); return [a[1], a[0]]; });
   return {type:"FeatureCollection", features: c.length > 1 ? [{type:"Feature", properties:{}, geometry:{type:"LineString", coordinates:c}}] : []};
@@ -368,8 +372,7 @@ function buildStyle(){
   s.sources.low = {type:"geojson", data:{type:"Feature", properties:{}, geometry:{type:"Polygon", coordinates:[DATA.overlay.low]}}};
   s.sources.scarp = {type:"geojson", data:{type:"Feature", properties:{}, geometry:{type:"LineString", coordinates:DATA.overlay.scarp}}};
   s.sources.plan = {type:"geojson", data:planGeo()};
-  s.sources.routes = {type:"geojson", data:{type:"FeatureCollection", features:(DATA.overlay.lines || []).map(l => ({type:"Feature",
-    properties:{id:l.id, c:l.c, label:l.n + "  " + (l.j || "")}, geometry:{type:"LineString", coordinates:l.coords}}))}};
+  s.sources.routes = {type:"geojson", data:routesGeo()};
   s.sources.fbw = {type:"geojson", data:line(DATA.fallback.wards)};
   s.sources.fbr = {type:"geojson", data:line(DATA.fallback.rail)};
   s.sources.fbv = {type:"geojson", data:line(DATA.fallback.rivers)};
@@ -379,17 +382,17 @@ function buildStyle(){
     {id:"fb-rail", type:"line", source:"fbr", layout:{visibility:"none"}, paint:{"line-color":"#8d9499","line-width":1.6}},
     {id:"low-fill", type:"fill", source:"low", layout:{visibility:hoodOn}, paint:{"fill-color":"#4a7096","fill-opacity":0.13}},
     {id:"scarp-line", type:"line", source:"scarp", layout:{visibility:hoodOn,"line-cap":"round"}, paint:{"line-color":"#9E7B4F","line-width":2.2,"line-dasharray":[2,2]}},
-    {id:"route-casing", type:"line", source:"routes", filter:["in", ["get","c"], ["literal", st.on]], layout:{"line-cap":"round","line-join":"round"},
+    {id:"route-casing", type:"line", source:"routes", layout:{"line-cap":"round","line-join":"round"},
       paint:{"line-color":"#ffffff","line-width":["interpolate",["linear"],["zoom"],11,3.5,16,9]}},
-    {id:"route-line", type:"line", source:"routes", filter:["in", ["get","c"], ["literal", st.on]], layout:{"line-cap":"round","line-join":"round"},
+    {id:"route-line", type:"line", source:"routes", layout:{"line-cap":"round","line-join":"round"},
       paint:{"line-color":"#1F6F78","line-width":["interpolate",["linear"],["zoom"],11,1.8,16,5]}},
-    {id:"route-hit", type:"line", source:"routes", filter:["in", ["get","c"], ["literal", st.on]], paint:{"line-color":"#000","line-opacity":0,"line-width":22}},
+    {id:"route-hit", type:"line", source:"routes", paint:{"line-color":"#000","line-opacity":0,"line-width":22}},
     {id:"plan-line", type:"line", source:"plan", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#181D24","line-width":2.5,"line-dasharray":[1,1.6]}}
   ];
   let at = s.layers.findIndex(l => l.type === "symbol");       // keep my overlays under the map's own labels
   if (at < 0) at = s.layers.length;
   s.layers.splice(at, 0, ...mine);
-  s.layers.push({id:"route-label", type:"symbol", source:"routes", minzoom:13, filter:["in", ["get","c"], ["literal", st.on]],
+  s.layers.push({id:"route-label", type:"symbol", source:"routes", minzoom:13,
     layout:{"symbol-placement":"line", "text-field":["get","label"], "text-font":["Noto Sans Bold"], "text-size":12.5, "symbol-spacing":420, "text-max-angle":35},
     paint:{"text-color":"#1F6F78", "text-halo-color":"rgba(255,255,255,0.95)", "text-halo-width":1.6}});
   return s;
@@ -436,7 +439,7 @@ function applyOverlays(tries){
     const hoodOn = st.on.includes("hood") ? "visible" : "none";
     map.setLayoutProperty("low-fill", "visibility", hoodOn);
     map.setLayoutProperty("scarp-line", "visibility", hoodOn);
-    ["route-casing","route-line","route-hit","route-label"].forEach(id => map.setFilter(id, ["in", ["get","c"], ["literal", st.on.slice()]]));
+    const rs = map.getSource("routes"); if (rs) rs.setData(routesGeo());
     FB_LAYERS.forEach(id => map.setLayoutProperty(id, "visibility", fallbackOn ? "visible" : "none"));
     const src = map.getSource("plan"); if (src) src.setData(planGeo());
   } catch (e){
