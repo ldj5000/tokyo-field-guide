@@ -393,7 +393,7 @@ function buildStyle(){
   if (at < 0) at = s.layers.length;
   s.layers.splice(at, 0, ...mine);
   s.layers.push({id:"route-label", type:"symbol", source:"routes", minzoom:13,
-    layout:{"symbol-placement":"line", "text-field":["get","label"], "text-font":["Noto Sans Bold"], "text-size":12.5, "symbol-spacing":420, "text-max-angle":35},
+    layout:{"symbol-placement":"line", "text-field":["get","label"], "text-font":["Noto Sans Bold"], "text-size":12.5, "symbol-spacing":320, "text-max-angle":70, "text-keep-upright":true},
     paint:{"text-color":"#1F6F78", "text-halo-color":"rgba(255,255,255,0.95)", "text-halo-width":1.6}});
   return s;
 }
